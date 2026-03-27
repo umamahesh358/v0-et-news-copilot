@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     
     # API Keys
     groq_api_key: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None  # Alternative uppercase name
     
     # Text Processing Configuration
     chunk_size: int = 512
@@ -27,7 +28,15 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+    
+    def get_groq_key(self) -> str:
+        """Get GROQ API key with fallback"""
+        return self.GROQ_API_KEY or self.groq_api_key or ""
 
 
 # Create settings instance
 settings = Settings()
+
+# Ensure GROQ_API_KEY is available
+if not settings.GROQ_API_KEY and settings.groq_api_key:
+    settings.GROQ_API_KEY = settings.groq_api_key

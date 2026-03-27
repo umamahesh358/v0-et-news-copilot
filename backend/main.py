@@ -3,9 +3,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.config import settings
-from backend.routers import health
+from backend.routers import health, search, briefing, qa
 from backend.models import TextCleanRequest, TextCleanResponse
 from backend.services.text_processing import clean_article, chunk_text
+from backend.services.retrieval import get_retrieval_service
+from backend.data.loader import load_articles_from_json, initialize_database
+import os
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -25,6 +28,9 @@ app.add_middleware(
 
 # Register routers
 app.include_router(health.router)
+app.include_router(search.router)
+app.include_router(briefing.router)
+app.include_router(qa.router)
 
 
 @app.get("/")
@@ -94,7 +100,23 @@ async def startup_event():
     """Run on application startup"""
     print("[Startup] ET News Copilot API starting...")
     print(f"[Startup] Debug mode: {settings.debug}")
-    print(f"[Startup] GROQ API Key configured: {'✓' if settings.groq_api_key else '✗'}")
+    print(f"[Startup] GROQ API Key configured: {'✓' if settings.GROQ_API_KEY else '✗'}")
+    
+    # Initialize vector database
+    try:
+        print("[Startup] Initializing vector database...")
+        retrieval_service = get_retrieval_service()
+        
+        # Load articles
+        articles_path = os.path.join(os.path.dirname(__file__), "data", "articles.json")
+        if os.path.exists(articles_path):
+            articles = load_articles_from_json(articles_path)
+            result = initialize_database(retrieval_service, articles)
+            print(f"[Startup] Database initialized: {result}")
+        else:
+            print(f"[Startup] Articles file not found at {articles_path}")
+    except Exception as e:
+        print(f"[Startup] Error initializing database: {e}")
 
 
 @app.on_event("shutdown")
